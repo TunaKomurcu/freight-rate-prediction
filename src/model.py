@@ -13,7 +13,7 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import Ridge
-from sklearn.model_selection import KFold
+from sklearn.model_selection import GroupKFold
 
 from .clean import WeightImputer, find_corrupted_rates
 from .config import SEED
@@ -37,12 +37,14 @@ DEFAULT_CONFIG = dict(
     target="log_rpm",        # log_rpm | rpm | rate
     objective="l2",          # l2 | huber | l1
     clean_labels=True,       # drop corrupted training labels (refit per fold)
-    quote_signal=True,       # True (raw) | "dev" (minus its daily mean) | False
+    quote_signal=True,       # True (raw) | "with_regime" (raw + coarse quote regime) | "with_day" / "with_7d"
+                             #   (raw + daily / trailing 7-day mean quote) | "dev" | False
     market_features="all",   # "all" | "cycle": drop slow market-level features, keep weekly cycle + per-load deviation
     holidays=True,
     trend=False,             # False | "linear" | "linear_q": linear time trend removed from the target
                              #   ("linear_q" controls for the quarter-end ramp when estimating the slope)
-    level_window=0,          # >0: shift predictions by the mean residual of the last N training days
+    level_window=0,          # >0: shift predictions by the mean out-of-time residual of the last N training days
+    half_life=0,             # >0: recency sample weights, halving every N days back
     calendar_market=False,   # additive only: add log(daily market index) to the stage-2 date model
     calendar="gbm",          # "gbm": date features inside the tree | "additive": tree without date features +
                              #   a ridge model of weekday + quarter-end ramp fitted on the tree's daily residuals
@@ -52,15 +54,18 @@ DEFAULT_CONFIG = dict(
 )
 
 
-# Chosen in Phase 3 on the rolling-origin time folds (see reports/validation_results.md):
+# Chosen in Phase 3 on the rolling-origin time folds (reports/validation_results.md) by worst-fold
+# MAE among configurations whose December curve is smooth:
 # * slow market-level features dropped: their link to rates was confounded with the low
 #   Jan-Feb level and caused -3..-5% bias two months out;
 # * date effects moved out of the tree into an additive stage-2 model (weekday + quarter-end
-#   ramp): inside the tree, date features let it memorise day-specific levels that do not
-#   carry over to unseen future dates, and gave an erratic December curve;
-# * holiday features dropped (no measurable effect; Thanksgiving/Christmas never in training);
-# * no time trend (unstable across folds); raw quote_signal kept (large gain on every scheme).
-FINAL_CONFIG = dict(market_features="cycle", holidays=False, calendar="additive")
+#   ramp), fitted on date-grouped out-of-fold residuals -> smooth, explainable daily movement;
+# * coarse quote regime added: the quote-price relation flips sign between regimes; a continuous
+#   daily quote mean is more accurate in CV but acts as a date ID and makes December erratic;
+# * recency weights (60-day half-life): lower worst-fold MAE than without;
+# * holiday features, time trend, level offsets and a ridge blend were tested and rejected.
+FINAL_CONFIG = dict(market_features="cycle", holidays=False, calendar="additive",
+                    quote_signal="with_regime", half_life=60)
 
 
 def days(dates):
@@ -75,7 +80,10 @@ class RateModel:
     # ------------------------------------------------------------ helpers
     def _columns(self, X):
         qs = self.cfg["quote_signal"]
-        drop = {True: ["qs_dev"], "dev": ["quote_signal"], False: ["quote_signal", "qs_dev"]}[qs]
+        extra = ["qs_dev", "qs_day", "qs_7d", "qs_regime"]
+        keep = {True: ["quote_signal"], "with_day": ["quote_signal", "qs_day"], "with_7d": ["quote_signal", "qs_7d"],
+                "with_regime": ["quote_signal", "qs_regime"], "dev": ["qs_dev"], False: []}[qs]
+        drop = [c for c in ["quote_signal"] + extra if c not in keep]
         if self.cfg["market_features"] == "cycle":
             drop += SLOW_MARKET_COLS
         else:
@@ -115,10 +123,11 @@ class RateModel:
             D["log_market_index"] = np.log(self.market.mi_day.reindex(dates).to_numpy())
         return D
 
-    def _fit_calendar(self, dates, resid):
-        """Daily mean residual ~ weekday + quarter-end ramp (weighted by loads per day)."""
-        d = pd.DataFrame({"date": pd.to_datetime(dates).to_numpy(), "r": resid})
-        daily = d.groupby("date").r.agg(["mean", "size"]).reset_index()
+    def _fit_calendar(self, dates, resid, weights=None):
+        """Daily mean residual ~ weekday + quarter-end ramp (weighted by loads per day x recency)."""
+        d = pd.DataFrame({"date": pd.to_datetime(dates).to_numpy(), "r": resid,
+                          "w": 1.0 if weights is None else weights})
+        daily = d.groupby("date").agg(mean=("r", "mean"), size=("w", "sum")).reset_index()
         D = self._date_design(daily.date)
         self.calendar_ = Ridge(alpha=1.0).fit(D, daily["mean"], sample_weight=daily["size"])
         self.calendar_coef_ = pd.Series(self.calendar_.coef_, index=D.columns)
@@ -183,30 +192,46 @@ class RateModel:
             fit_y = np.exp(y)
         elif self.cfg["target"] == "rate":
             fit_y = np.exp(y) * train.distance.to_numpy()
-        self.gbm_ = self._gbm().fit(X[self.columns_], fit_y)
+        t = days(train.date)
+        w = None
+        if self.cfg["half_life"]:
+            # recency weighting: a load's weight halves every `half_life` days back from the fold's last day
+            w = 0.5 ** ((t.max() - t) / self.cfg["half_life"])
+        Xc = X[self.columns_]
+        self.gbm_ = self._gbm().fit(Xc, fit_y, sample_weight=w)
+
+        def oof_by_date():
+            # folds grouped by DATE: held-out days are unseen, so any day-level signal the tree could
+            # only get by memorising dates stays in the residual for stage 2 to estimate
+            oof = np.zeros(len(Xc))
+            for a, b in GroupKFold(3, shuffle=True, random_state=SEED).split(Xc, groups=t):
+                oof[b] = self._gbm().fit(Xc.iloc[a], fit_y[a], sample_weight=None if w is None else w[a]).predict(Xc.iloc[b])
+            return oof
 
         self.calendar_ = None
+        oof = None
         if self.cfg["calendar"] == "additive":
             # Stage 2 is fitted on OUT-OF-FOLD tree residuals: in-sample residuals are shrunk
             # because the tree partly fits the day effects through other features/noise.
-            oof = np.zeros(len(X))
-            for a, b in KFold(3, shuffle=True, random_state=SEED).split(X):
-                oof[b] = self._gbm().fit(X[self.columns_].iloc[a], fit_y[a]).predict(X[self.columns_].iloc[b])
-            self._fit_calendar(train.date, fit_y - oof)
+            oof = oof_by_date()
+            self._fit_calendar(train.date, fit_y - oof, None if w is None else w)
 
         self.level_ = 0.0
         if self.cfg["level_window"] and self.cfg["target"] == "log_rpm":
-            # local-level correction: the tree has no absolute-time feature, so the mean residual of
-            # the most recent weeks estimates where the price level currently sits vs the training average
-            recent = (train.date > train.date.max() - pd.Timedelta(days=self.cfg["level_window"])).to_numpy()
-            self.level_ = float(np.mean(fit_y[recent] - self.gbm_.predict(X[self.columns_][recent])))
+            # Local-level offset = mean out-of-time residual of the last N days: a tree fitted on the
+            # rows BEFORE the window predicts the window (the same situation as forecasting ahead);
+            # its mean error, net of the stage-2 calendar effect, is the recent level shift.
+            recent = t > t.max() - self.cfg["level_window"]
+            past = self._gbm().fit(Xc[~recent], fit_y[~recent], sample_weight=None if w is None else w[~recent])
+            resid = fit_y[recent] - past.predict(Xc[recent])
+            if self.calendar_ is not None:
+                resid = resid - self._calendar_effect(train.date[recent])
+            self.level_ = float(np.mean(resid))
 
         self.smear_ = 1.0
         if self.cfg["smearing"] and self.cfg["target"] == "log_rpm":
             # Duan smearing from out-of-fold residuals (in-sample GBM residuals are too small)
-            oof = np.zeros(len(X))
-            for a, b in KFold(3, shuffle=True, random_state=SEED).split(X):
-                oof[b] = self._gbm().fit(X[self.columns_].iloc[a], fit_y[a]).predict(X[self.columns_].iloc[b])
+            oof = oof_by_date() if oof is None else oof
             self.smear_ = float(np.mean(np.exp(fit_y - oof)))
         return self
 

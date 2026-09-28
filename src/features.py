@@ -21,6 +21,7 @@ from .data import haversine_miles
 
 DIST_BANDS = [0, 250, 500, 750, 1000, 1500, 2000, 2500, np.inf]
 REGION_DEG = 5.0  # coarse grid cell size (degrees) for region fallback
+QS_REGIME_CUTS = [2.0, 2.1]  # weekly quote means cluster at ~1.93 / ~2.05 / ~2.2-2.3 (see EDA)
 US_HOLIDAYS = holidays.US(years=[2024, 2025, 2026])
 
 
@@ -39,7 +40,12 @@ def daily_market(*frames):
     daily = g.market_index.mean().sort_index().asfreq("D").interpolate(limit_direction="both")
     qs = g.quote_signal.mean().sort_index().asfreq("D").interpolate(limit_direction="both")
     out = pd.DataFrame({"mi_day": daily, "mi_7d": daily.rolling(7, min_periods=1).mean(),
-                        "mi_28d": daily.rolling(28, min_periods=1).mean(), "qs_day": qs})
+                        "mi_28d": daily.rolling(28, min_periods=1).mean(), "qs_day": qs,
+                        # trailing 7-day mean: the quote regime lasts weeks, the daily mean is noisy
+                        "qs_7d": qs.rolling(7, min_periods=1).mean()})
+    # Coarse quote regime (0 low / 1 mid / 2 high) from the trailing 7-day mean. Coarse on purpose:
+    # a continuous daily value is unique per date and lets the tree memorise day-level prices.
+    out["qs_regime"] = np.digitize(out.qs_7d, QS_REGIME_CUTS)
     out["mi_cycle"] = out.mi_day - out.mi_28d  # weekly cycle around the slow market level
     return out
 
@@ -103,6 +109,11 @@ def base_features(df, market):
         "mi_cycle": m.mi_cycle.to_numpy(),
         "quote_signal": df.quote_signal.to_numpy(),
         "qs_dev": df.quote_signal.to_numpy() - m.qs_day.to_numpy(),
+        # daily mean quote: identifies the regime in which quote_signal relates positively /
+        # negatively / not at all to price (see EDA); known on the day like market_index
+        "qs_day": m.qs_day.to_numpy(),
+        "qs_7d": m.qs_7d.to_numpy(),
+        "qs_regime": m.qs_regime.to_numpy(),
     })
     X["mi_dev"] = X.market_index - X.mi_day  # per-load deviation from the day's market
     return pd.concat([X, calendar_features(df.date)], axis=1)

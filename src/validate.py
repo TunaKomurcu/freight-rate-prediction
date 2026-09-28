@@ -30,7 +30,7 @@ N_CITY_GROUPS = 8  # 64 cities -> groups of 8, like the 8 unseen cities in valid
 BASELINES = {"B1 global median rpm x distance": GlobalRPM, "B2 lane median rpm": LaneMedian,
              "B3 ridge (log rpm)": RidgeLogRPM}
 MAIN = "M0 LightGBM log-rpm"
-FINAL = "A24 cycle - holidays + additive calendar"  # == model.FINAL_CONFIG
+FINAL = "A40 A39 + recency half-life 60d"  # == model.FINAL_CONFIG
 EXPERIMENTS = {
     MAIN: {},
     "A1 - quote_signal": {"quote_signal": False},
@@ -46,12 +46,8 @@ EXPERIMENTS = {
     "A11 quote_signal as deviation from daily mean": {"quote_signal": "dev"},
     "A12 market: weekly cycle only (no slow level)": {"market_features": "cycle"},
     "A13 + linear trend (quarter-ramp controlled)": {"trend": "linear_q"},
-    "A14 + 28-day level anchor": {"level_window": 28},
-    "A15 cycle + level anchor": {"market_features": "cycle", "level_window": 28},
     "A16 cycle + qs dev": {"market_features": "cycle", "quote_signal": "dev"},
-    "A17 cycle + qs dev + level anchor": {"market_features": "cycle", "quote_signal": "dev", "level_window": 28},
     "A18 cycle + qs dev + trend_q": {"market_features": "cycle", "quote_signal": "dev", "trend": "linear_q"},
-    "A19 cycle + qs dev + trend_q + level anchor": {"market_features": "cycle", "quote_signal": "dev", "trend": "linear_q", "level_window": 28},
     "A20 cycle - quote_signal": {"market_features": "cycle", "quote_signal": False},
     "A21 cycle - holiday features": {"market_features": "cycle", "holidays": False},
     "A22 cycle + trend_q": {"market_features": "cycle", "trend": "linear_q"},
@@ -60,6 +56,20 @@ EXPERIMENTS = {
     "A25 all market - holidays + additive calendar": {"holidays": False, "calendar": "additive"},
     "A26 cycle - holidays + additive calendar with market": {"market_features": "cycle", "holidays": False,
                                                             "calendar": "additive", "calendar_market": True},
+    "A27 A24 + qs_day (quote regime)": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "with_day"},
+    "A28 A24 + recency half-life 30d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "half_life": 30},
+    "A29 A24 + recency half-life 60d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "half_life": 60},
+    "A30 A24 + recency half-life 90d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "half_life": 90},
+    "A31 A24 + level offset 28d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "level_window": 28},
+    "A32 A24 + level offset 56d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "level_window": 56},
+    "A33 A27 + level offset 28d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "with_day", "level_window": 28},
+    "A34 A27 + recency half-life 60d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "with_day", "half_life": 60},
+    "A35 A27 + recency half-life 90d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "with_day", "half_life": 90},
+    "A36 A27 + level offset 42d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "with_day", "level_window": 42},
+    "A37 A24 + qs_7d (smoothed quote regime)": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "with_7d"},
+    "A38 A37 + recency half-life 60d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "with_7d", "half_life": 60},
+    "A39 A24 + coarse quote regime": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "with_regime"},
+    "A40 A39 + recency half-life 60d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "with_regime", "half_life": 60},
     "T1 leaves=63, min_child=20": {"params": {"num_leaves": 63, "min_child_samples": 20}},
     "T2 leaves=15, lr=0.05, 800 trees": {"params": {"num_leaves": 15, "learning_rate": 0.05, "n_estimators": 800}},
 }
@@ -67,8 +77,11 @@ SCHEME_EXPERIMENTS = {
     "time": list(EXPERIMENTS),
     "city": [MAIN, "A1 - quote_signal", "A2 - holiday features", "A9 no unseen-city blanking",
              "A12 market: weekly cycle only (no slow level)", "A21 cycle - holiday features",
-             "A24 cycle - holidays + additive calendar"],
-    "random": [MAIN, "A21 cycle - holiday features", "A24 cycle - holidays + additive calendar"],
+             "A24 cycle - holidays + additive calendar", "A27 A24 + qs_day (quote regime)",
+             "A34 A27 + recency half-life 60d", "A39 A24 + coarse quote regime", "A40 A39 + recency half-life 60d"],
+    "random": [MAIN, "A21 cycle - holiday features", "A24 cycle - holidays + additive calendar",
+               "A27 A24 + qs_day (quote regime)", "A34 A27 + recency half-life 60d",
+               "A39 A24 + coarse quote regime", "A40 A39 + recency half-life 60d"],
 }
 
 
@@ -147,13 +160,60 @@ def fmt(mean_clean, mean_raw, order):
     return t.round(2)
 
 
+KEY_MODELS = list(BASELINES) + [MAIN, "A21 cycle - holiday features", "A24 cycle - holidays + additive calendar",
+                                 "A27 A24 + qs_day (quote regime)", "A34 A27 + recency half-life 60d",
+                                 "A39 A24 + coarse quote regime", "A40 A39 + recency half-life 60d"]
+NOTES = {
+    "A3 + linear time trend": "M0 + linear trend removed from the log target (slope from daily residuals, controlling for log market index)",
+    "A13 + linear trend (quarter-ramp controlled)": "as A3, but the slope regression also controls for the quarter-end ramp",
+    "A12 market: weekly cycle only (no slow level)": "drops market_index, mi_day, mi_7d, mi_28d; keeps mi_cycle (= day - 28d mean) and per-load deviation",
+    "A24 cycle - holidays + additive calendar": "tree without date features + ridge stage 2 (weekday + quarter-end ramp) on out-of-fold residuals",
+    "A27 A24 + qs_day (quote regime)": "adds the daily mean quote_signal, which identifies the regime of the quote-price relation",
+    "A31 A24 + level offset 28d": "level offset = mean out-of-time residual of the last 28 training days",
+    "A34 A27 + recency half-life 60d": "most accurate in CV, but the continuous daily quote mean acts as a date ID: erratic December curve",
+    "A37 A24 + qs_7d (smoothed quote regime)": "trailing 7-day mean quote instead of the daily mean",
+    "A39 A24 + coarse quote regime": "quote regime as 3 levels (7-day mean quote < 2.0 / 2.0-2.1 / > 2.1)",
+    "A40 A39 + recency half-life 60d": "FINAL: lowest worst-fold MAE among models with a smooth December curve",
+}
+
+
+def summary_table():
+    """One complete row per key model: time folds, mean, worst, MAPE, monthly bias, city, random."""
+    rows = {}
+    for scheme in ("time", "city", "random"):
+        df = pd.read_csv(ARTIFACTS / f"cv_{scheme}.csv", parse_dates=["date"])
+        c = df[~df.corrupted & df.model.isin(KEY_MODELS)].copy()
+        c["ae"], c["pe"] = (c.pred - c.y).abs(), 100 * (c.pred - c.y) / c.y
+        per_fold = c.groupby(["model", "fold"]).ae.mean().unstack()
+        for m in per_fold.index:
+            r = rows.setdefault(m, {})
+            if scheme == "time":
+                r.update({f.split(":")[0]: per_fold.loc[m, f] for f in per_fold.columns})
+                r["time mean"], r["time worst"] = per_fold.loc[m].mean(), per_fold.loc[m].max()
+                g = c[c.model == m]
+                r["time MAPE %"] = 100 * (g.ae / g.y).mean()
+                r.update({f"bias {k} %": v for k, v in g.groupby(g.date.dt.strftime("%b")).pe.mean().items()})
+            else:
+                r[f"{scheme} MAE"] = per_fold.loc[m].mean()
+    t = pd.DataFrame(rows).T.reindex(KEY_MODELS)
+    bias_cols = [f"bias {m} %" for m in ("May", "Jun", "Jul", "Aug", "Sep", "Oct")]
+    return t[["T1", "T2", "T3", "time mean", "time worst", "time MAPE %", "city MAE", "random MAE"] + bias_cols].round(2)
+
+
 def report():
     from .plotting import plt, save, setup
     setup()
     order = list(BASELINES) + list(EXPERIMENTS)
+    legend = pd.DataFrame([{"id": n, "config (changes vs defaults)": str(EXPERIMENTS.get(n, "baseline")),
+                            "note": NOTES.get(n, "")} for n in order])
     md = ["# Validation results", "",
           "Dollar-scale metrics. *clean* = test rows whose label is not flagged as corrupted; "
-          "*raw* = all test rows (Spotter's labels likely contain the same ~1.4% corruption).", ""]
+          "*raw* = all test rows (Spotter's labels likely contain the same ~1.4% corruption).",
+          "Time folds: T1 Jan-Apr > May-Jun, T2 Jan-Jun > Jul-Aug, T3 Jan-Aug > Sep-Oct. "
+          "Final model: " + FINAL, "",
+          "## Key models (MAE $, clean labels; bias = mean signed % error, negative = under-prediction)", "",
+          summary_table().to_markdown(), "",
+          "## Experiment legend", "", legend.to_markdown(index=False), ""]
     per_fold_all = {}
     for scheme in ("time", "city", "random"):
         df = pd.read_csv(ARTIFACTS / f"cv_{scheme}.csv", parse_dates=["date"])
