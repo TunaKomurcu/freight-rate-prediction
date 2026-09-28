@@ -29,7 +29,7 @@ ROWS = [
     ("A24 cycle - holidays + additive calendar", "Two-stage: tree + weekday/quarter-end model"),
     ("A40 A39 + recency half-life 60d", "+ coarse quote regime + recency (smooth alt.)"),
     ("A42 A24 + qs_7d + quote x regime", "+ trailing quote x regime (smooth alt.)"),
-    ("A34 A27 + recency half-life 60d", "FINAL: + daily quote regime + recency weights"),
+    ("A34 A27 + recency half-life 60d", "FINAL (A34): + daily quote regime + recency"),
 ]
 
 
@@ -116,6 +116,8 @@ def build():
     ridge = key.loc["B3 ridge (log rpm)"]
 
     doc = Document()
+    props = doc.core_properties  # neutral metadata (no tool/user names)
+    props.title, props.author, props.comments, props.last_modified_by = "Freight Load Rate Prediction", "", "", ""
     sec = doc.sections[0]
     sec.page_width, sec.page_height = Inches(8.5), Inches(11)
     for side in ("left_margin", "right_margin"):
@@ -141,8 +143,9 @@ def build():
         ("Model. ", "Two stages on log rate-per-mile: a LightGBM tree for the load-level price (lane/city/region "
                     "encodings, distance, equipment, weight, quote_signal and its daily regime) plus a small ridge "
                     "model for day-level effects (weekday, quarter-end ramp)."),
-        ("Result. ", f"Time-fold MAE ${final['time mean']:.1f} (MAPE {final['time MAPE %']:.2f}%), worst fold "
-                     f"${final['time worst']:.1f}, vs ${ridge['time mean']:.1f} for ridge and ${m0['time mean']:.1f} "
+        ("Result (final model A34). ", f"Time-fold MAE ${final['time mean']:.1f} (MAPE {final['time MAPE %']:.2f}%), worst fold "
+                     f"${final['time worst']:.1f}; city holdout ${final['city MAE']:.1f}, random split "
+                     f"${final['random MAE']:.1f}; vs ${ridge['time mean']:.1f} for ridge and ${m0['time mean']:.1f} "
                      "for a plain LightGBM on all features."),
         ("Key finding. ", "quote_signal looked useless (pooled correlation ~0) but its relation to price flips "
                           "sign between regimes that the daily mean quote identifies; modelling the regime is the "
@@ -304,7 +307,7 @@ def build():
 
 def main():
     path = build()
-    print(f"Wrote {path}")
+    print(f"Wrote {path.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ original instructions and `reports/Freight_Rate_Report.docx` for the write-up.
 | `validation_predictions.csv` | `load_id,predicted_rate` for all 12,000 validation loads |
 | `data/december_chart_inputs.csv` | the December file with `predicted_rate` filled (7 original columns) |
 | `scorer_results/candidate_december.png` | chart produced by `score.py` |
-| `reports/Freight_Rate_Report.docx` | report: data, data quality, validation/split, model, metrics, December chart, limitations |
+| `reports/Freight_Rate_Report.docx` / `.pdf` | report: data, data quality, validation/split, model, metrics, December chart, limitations (PDF exported from the DOCX with Word) |
 | `reports/loom_talking_points.md` | script for the 2–3 minute Loom |
 
 ## Setup
@@ -41,6 +41,15 @@ python score.py --predictions validation_predictions.csv --december-predictions 
 Individual steps: `python -m src.eda`, `src.prepare`, `src.validate --scheme time|city|random [--models ...]`,
 `src.validate --report`, `src.ensemble`, `src.train`, `src.predict`, `src.december [--variants]`, `src.report`.
 All randomness is seeded (`src/config.py: SEED = 42`).
+
+## Results (final model A34, MAE in $ on clean labels)
+
+| Time folds T1 / T2 / T3 | Mean | Worst | MAPE | City holdout | Random 5-fold |
+|---|---|---|---|---|---|
+| 30.2 / 64.1 / 26.8 | 40.4 | 64.1 | 1.85% | 31.3 | 28.6 |
+
+Baselines on the same time folds: ridge 71.8 (worst 110.7), lane median 102.9, global median $/mile 197.6.
+Full tables: `reports/validation_results.md`.
 
 ## Approach in one paragraph
 

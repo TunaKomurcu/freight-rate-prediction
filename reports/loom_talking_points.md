@@ -36,7 +36,8 @@ refitted inside each fold."
 "Two stages on log rate-per-mile: LightGBM for the load-level price with leak-free lane, city and region encodings
 and an unseen-city fallback, plus a small ridge model for weekday and quarter-end effects. I removed the slow market
 level and holiday features and tested trends, level offsets and a ridge blend; they didn't survive the time folds.
-The result: MAE $40 and 1.85% MAPE on the time folds, versus $72 for ridge."
+The final model, A34, gets MAE $40.4 and 1.85% MAPE on the time folds, worst fold $64.1, versus $72 for ridge;
+$31.3 on the city holdout and $28.6 on the random split."
 
 ## 2:20 – December chart and limits (25 s)
 *scorer_results/candidate_december.png*
