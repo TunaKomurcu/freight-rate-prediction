@@ -1,0 +1,10 @@
+# Scorer dependencies (ranges required by score.py are satisfied by these pins)
+matplotlib==3.11.2
+numpy==2.5.3
+pandas==2.3.3
+# Modeling / reporting
+scikit-learn==1.9.1
+scipy==1.18.1
+lightgbm==4.7.0
+holidays==0.105
+python-docx==1.2.0
