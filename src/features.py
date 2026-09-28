@@ -26,16 +26,22 @@ US_HOLIDAYS = holidays.US(years=[2024, 2025, 2026])
 
 # ---------------------------------------------------------------- market index
 def daily_market(*frames):
-    """Daily mean market_index across all supplied feature frames (never uses the target).
+    """Daily feature aggregates across all supplied frames (never uses the target).
 
+    Frames are concatenated and sorted by date (train + validation), so early-November
+    rolling values use late-October days exactly as they would at prediction time.
     market_index is one market value per day plus per-load noise, so the daily mean is a
     de-noised version. December comes from validation.csv, where every day is present.
+    qs_day (daily mean quote_signal) lets the model use a load's quote relative to its day.
     """
-    rows = pd.concat([f[["date", "market_index"]] for f in frames])
-    daily = rows.groupby("date").market_index.mean().sort_index()
-    daily = daily.asfreq("D").interpolate(limit_direction="both")
-    return pd.DataFrame({"mi_day": daily, "mi_7d": daily.rolling(7, min_periods=1).mean(),
-                         "mi_28d": daily.rolling(28, min_periods=1).mean()})
+    rows = pd.concat([f[["date", "market_index", "quote_signal"]] for f in frames])
+    g = rows.groupby("date")
+    daily = g.market_index.mean().sort_index().asfreq("D").interpolate(limit_direction="both")
+    qs = g.quote_signal.mean().sort_index().asfreq("D").interpolate(limit_direction="both")
+    out = pd.DataFrame({"mi_day": daily, "mi_7d": daily.rolling(7, min_periods=1).mean(),
+                        "mi_28d": daily.rolling(28, min_periods=1).mean(), "qs_day": qs})
+    out["mi_cycle"] = out.mi_day - out.mi_28d  # weekly cycle around the slow market level
+    return out
 
 
 # ---------------------------------------------------------------- calendar
@@ -94,7 +100,9 @@ def base_features(df, market):
         "weight_missing": df.weight_missing.to_numpy(),
         "market_index": df.market_index.to_numpy(),
         "mi_day": m.mi_day.to_numpy(), "mi_7d": m.mi_7d.to_numpy(), "mi_28d": m.mi_28d.to_numpy(),
+        "mi_cycle": m.mi_cycle.to_numpy(),
         "quote_signal": df.quote_signal.to_numpy(),
+        "qs_dev": df.quote_signal.to_numpy() - m.qs_day.to_numpy(),
     })
     X["mi_dev"] = X.market_index - X.mi_day  # per-load deviation from the day's market
     return pd.concat([X, calendar_features(df.date)], axis=1)
@@ -187,7 +195,7 @@ def prepare_december(dec, coords, market, quote_fill):
     Missing columns are reconstructed (see report):
       * lat/lon: looked up per city from the delivered data (identical for every load of a city)
       * market_index: that day's mean market_index from validation.csv (all 31 days present)
-      * quote_signal: training median (the feature carries ~no signal, see EDA)
+      * quote_signal: median of comparable training loads (Dry Van, 300-420 mi), see predict.py
       * weight flags: 32,000 lb is neither capped, floored nor missing
     """
     out = dec.drop(columns="predicted_rate").copy()
