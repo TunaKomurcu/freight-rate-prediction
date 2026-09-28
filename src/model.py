@@ -37,8 +37,9 @@ DEFAULT_CONFIG = dict(
     target="log_rpm",        # log_rpm | rpm | rate
     objective="l2",          # l2 | huber | l1
     clean_labels=True,       # drop corrupted training labels (refit per fold)
-    quote_signal=True,       # True (raw) | "with_regime" (raw + coarse quote regime) | "with_day" / "with_7d"
-                             #   (raw + daily / trailing 7-day mean quote) | "dev" | False
+    quote_signal=True,       # True (raw) | "with_regime" (raw + coarse quote regime) | "with_day" / "with_7d" /
+                             #   "with_14d" (raw + daily / trailing mean quote) | "interact_7d" / "interact_14d"
+                             #   (raw + trailing mean + quote x (trailing mean - c)) | "dev" | False
     market_features="all",   # "all" | "cycle": drop slow market-level features, keep weekly cycle + per-load deviation
     holidays=True,
     trend=False,             # False | "linear" | "linear_q": linear time trend removed from the target
@@ -54,18 +55,19 @@ DEFAULT_CONFIG = dict(
 )
 
 
-# Chosen in Phase 3 on the rolling-origin time folds (reports/validation_results.md) by worst-fold
-# MAE among configurations whose December curve is smooth:
+# Chosen in Phase 3 on the rolling-origin time folds (reports/validation_results.md):
 # * slow market-level features dropped: their link to rates was confounded with the low
 #   Jan-Feb level and caused -3..-5% bias two months out;
 # * date effects moved out of the tree into an additive stage-2 model (weekday + quarter-end
-#   ramp), fitted on date-grouped out-of-fold residuals -> smooth, explainable daily movement;
-# * coarse quote regime added: the quote-price relation flips sign between regimes; a continuous
-#   daily quote mean is more accurate in CV but acts as a date ID and makes December erratic;
-# * recency weights (60-day half-life): lower worst-fold MAE than without;
+#   ramp), fitted on date-grouped out-of-fold residuals;
+# * daily mean quote_signal added: the quote-price relation flips sign between regimes and the
+#   daily mean identifies the regime. It also varies a little from day to day, so the tree
+#   treats it partly as a date signal -> December curve jitters (documented trade-off:
+#   smooth alternatives cost 8-20% MAE, see reports/smooth_variants.md);
+# * recency weights (60-day half-life): lowest worst-fold MAE;
 # * holiday features, time trend, level offsets and a ridge blend were tested and rejected.
 FINAL_CONFIG = dict(market_features="cycle", holidays=False, calendar="additive",
-                    quote_signal="with_regime", half_life=60)
+                    quote_signal="with_day", half_life=60)
 
 
 def days(dates):
@@ -80,8 +82,10 @@ class RateModel:
     # ------------------------------------------------------------ helpers
     def _columns(self, X):
         qs = self.cfg["quote_signal"]
-        extra = ["qs_dev", "qs_day", "qs_7d", "qs_regime"]
-        keep = {True: ["quote_signal"], "with_day": ["quote_signal", "qs_day"], "with_7d": ["quote_signal", "qs_7d"],
+        extra = ["qs_dev", "qs_day", "qs_7d", "qs_14d", "qs_regime", "qs_x"]
+        keep = {True: ["quote_signal"], "with_day": ["quote_signal", "qs_day"],
+                "with_7d": ["quote_signal", "qs_7d"], "with_14d": ["quote_signal", "qs_14d"],
+                "interact_7d": ["quote_signal", "qs_7d", "qs_x"], "interact_14d": ["quote_signal", "qs_14d", "qs_x"],
                 "with_regime": ["quote_signal", "qs_regime"], "dev": ["qs_dev"], False: []}[qs]
         drop = [c for c in ["quote_signal"] + extra if c not in keep]
         if self.cfg["market_features"] == "cycle":
@@ -159,7 +163,14 @@ class RateModel:
         return lgb.LGBMRegressor(**params)
 
     def _design(self, df, enc):
-        return pd.concat([base_features(df, self.market), enc.reset_index(drop=True)], axis=1)
+        X = pd.concat([base_features(df, self.market), enc.reset_index(drop=True)], axis=1)
+        qs = self.cfg["quote_signal"]
+        if isinstance(qs, str) and qs.startswith("interact"):
+            # explicit quote x regime interaction: the sign of the quote's effect follows the regime
+            X["qs_x"] = X.quote_signal * (X["qs_" + qs.split("_")[1]] - self.qs_center_)
+        else:
+            X["qs_x"] = 0.0
+        return X
 
     # ------------------------------------------------------------ fit / predict
     def fit(self, train, corrupted=None):
@@ -172,6 +183,7 @@ class RateModel:
             bad = find_corrupted_rates(train)[0] if corrupted is None else pd.Series(np.asarray(corrupted))
             train = train[~bad.to_numpy()].reset_index(drop=True)
         self.n_train_ = len(train)
+        self.qs_center_ = float(train.quote_signal.mean())  # regime centre c, fitted on this fold's rows
 
         y = self._target(train)
         keys = add_keys(train)

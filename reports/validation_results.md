@@ -1,69 +1,77 @@
 # Validation results
 
 Dollar-scale metrics. *clean* = test rows whose label is not flagged as corrupted; *raw* = all test rows (Spotter's labels likely contain the same ~1.4% corruption).
-Time folds: T1 Jan-Apr > May-Jun, T2 Jan-Jun > Jul-Aug, T3 Jan-Aug > Sep-Oct. Final model: A40 A39 + recency half-life 60d
+Time folds: T1 Jan-Apr > May-Jun, T2 Jan-Jun > Jul-Aug, T3 Jan-Aug > Sep-Oct. Final model: A34 A27 + recency half-life 60d
 
 ## Key models (MAE $, clean labels; bias = mean signed % error, negative = under-prediction)
 
-|                                          |     T1 |     T2 |     T3 |   time mean |   time worst |   time MAPE % |   city MAE |   random MAE |   bias May % |   bias Jun % |   bias Jul % |   bias Aug % |   bias Sep % |   bias Oct % |
-|:-----------------------------------------|-------:|-------:|-------:|------------:|-------------:|--------------:|-----------:|-------------:|-------------:|-------------:|-------------:|-------------:|-------------:|-------------:|
-| B1 global median rpm x distance          | 189.83 | 199.15 | 203.69 |      197.56 |       203.69 |          9.37 |     213.04 |       213.48 |        -5.11 |        -7.46 |        -2.77 |         0.2  |        -1.23 |        -1.67 |
-| B2 lane median rpm                       | 148.75 |  83.85 |  76.18 |      102.92 |       148.75 |          4.25 |      94.84 |        90.88 |        -4.55 |        -6.77 |        -2.15 |         0.91 |        -0.6  |        -0.92 |
-| B3 ridge (log rpm)                       |  52.55 |  52.33 | 110.67 |       71.85 |       110.67 |          3.01 |      59.62 |        54.76 |         0.45 |        -2.25 |        -0.75 |        -2.64 |        -5.1  |        -4.28 |
-| M0 LightGBM log-rpm                      |  59.2  |  69.97 |  81.16 |       70.11 |        81.16 |          3.11 |      26.63 |        23.78 |        -0.13 |        -1.95 |        -0.59 |        -3    |        -2.3  |        -4.98 |
-| A21 cycle - holiday features             |  68.4  |  85.45 |  32.88 |       62.24 |        85.45 |          2.7  |      29.21 |        26.57 |        -3.1  |        -2.06 |        -2.58 |        -0.88 |         1.13 |        -0.5  |
-| A24 cycle - holidays + additive calendar |  55.92 |  80.23 |  30.88 |       55.68 |        80.23 |          2.38 |      42.9  |        40.95 |        -2.02 |        -1.87 |        -0.86 |        -0.84 |         0.41 |        -0.29 |
-| A27 A24 + qs_day (quote regime)          |  28.34 |  67.95 |  23.17 |       39.82 |        67.95 |          1.83 |      27.13 |        24.91 |        -0.34 |        -0.88 |        -0.08 |        -3.27 |         0.21 |         0.17 |
-| A34 A27 + recency half-life 60d          |  30.21 |  64.11 |  26.78 |       40.37 |        64.11 |          1.85 |      31.3  |        28.63 |        -0.35 |        -1.03 |        -0.12 |        -3.24 |         0.19 |         0.27 |
-| A39 A24 + coarse quote regime            |  41.24 |  73.67 |  27.26 |       47.39 |        73.67 |          2.07 |      33.23 |        31.77 |        -0.74 |        -1.74 |        -0.37 |        -2.29 |         0.34 |         0.19 |
-| A40 A39 + recency half-life 60d          |  42.51 |  71.43 |  32.37 |       48.77 |        71.43 |          2.12 |      38.4  |        36.66 |        -0.78 |        -1.89 |        -0.36 |        -1.92 |         0.96 |         0.45 |
+|                                          |     T1 |     T2 |     T3 |   time mean |   time worst |   time MAPE % |   time RMSE clean |   time MAE raw |   time RMSE raw |   city MAE |   random MAE |   bias May % |   bias Jun % |   bias Jul % |   bias Aug % |   bias Sep % |   bias Oct % |
+|:-----------------------------------------|-------:|-------:|-------:|------------:|-------------:|--------------:|------------------:|---------------:|----------------:|-----------:|-------------:|-------------:|-------------:|-------------:|-------------:|-------------:|-------------:|
+| B1 global median rpm x distance          | 189.83 | 199.15 | 203.69 |      197.56 |       203.69 |          9.37 |            276.89 |         249.25 |          676.94 |     213.04 |       213.48 |        -5.11 |        -7.46 |        -2.77 |         0.2  |        -1.23 |        -1.67 |
+| B2 lane median rpm                       | 148.75 |  83.85 |  76.18 |      102.92 |       148.75 |          4.25 |            143.61 |         156.17 |          645.11 |      94.84 |        90.88 |        -4.55 |        -6.77 |        -2.15 |         0.91 |        -0.6  |        -0.92 |
+| B3 ridge (log rpm)                       |  52.55 |  52.33 | 110.67 |       71.85 |       110.67 |          3.01 |             98.68 |         125.49 |          636.22 |      59.62 |        54.76 |         0.45 |        -2.25 |        -0.75 |        -2.64 |        -5.1  |        -4.28 |
+| M0 LightGBM log-rpm                      |  59.2  |  69.97 |  81.16 |       70.11 |        81.16 |          3.11 |            106.66 |         123.62 |          633.51 |      26.63 |        23.78 |        -0.13 |        -1.95 |        -0.59 |        -3    |        -2.3  |        -4.98 |
+| A21 cycle - holiday features             |  68.4  |  85.45 |  32.88 |       62.24 |        85.45 |          2.7  |             91.82 |         115.89 |          631.92 |      29.21 |        26.57 |        -3.1  |        -2.06 |        -2.58 |        -0.88 |         1.13 |        -0.5  |
+| A24 cycle - holidays + additive calendar |  55.92 |  80.23 |  30.88 |       55.68 |        80.23 |          2.38 |             87.68 |         109.39 |          630.57 |      42.9  |        40.95 |        -2.02 |        -1.87 |        -0.86 |        -0.84 |         0.41 |        -0.29 |
+| A27 A24 + qs_day (quote regime)          |  28.34 |  67.95 |  23.17 |       39.82 |        67.95 |          1.83 |             62.5  |          93.77 |          627.34 |      27.13 |        24.91 |        -0.34 |        -0.88 |        -0.08 |        -3.27 |         0.21 |         0.17 |
+| A34 A27 + recency half-life 60d          |  30.21 |  64.11 |  26.78 |       40.37 |        64.11 |          1.85 |             63.29 |          94.29 |          626.98 |      31.3  |        28.63 |        -0.35 |        -1.03 |        -0.12 |        -3.24 |         0.19 |         0.27 |
+| A39 A24 + coarse quote regime            |  41.24 |  73.67 |  27.26 |       47.39 |        73.67 |          2.07 |             77.05 |         101.21 |          628.75 |      33.23 |        31.77 |        -0.74 |        -1.74 |        -0.37 |        -2.29 |         0.34 |         0.19 |
+| A40 A39 + recency half-life 60d          |  42.51 |  71.43 |  32.37 |       48.77 |        71.43 |          2.12 |             78.06 |         102.56 |          628.43 |      38.4  |        36.66 |        -0.78 |        -1.89 |        -0.36 |        -1.92 |         0.96 |         0.45 |
+| A42 A24 + qs_7d + quote x regime         |  32.76 |  68.19 |  30.21 |       43.72 |        68.19 |          1.95 |             70.22 |          97.58 |          627.7  |      28.43 |        26.26 |         0.08 |        -0.96 |        -0.29 |        -2.18 |        -0.2  |        -0.46 |
+| A44 A42 + recency half-life 60d          |  33.48 |  66.51 |  35.35 |       45.12 |        66.51 |          2    |             70.78 |          98.95 |          627.58 |      31.54 |        28.84 |         0.02 |        -1.07 |        -0.28 |        -2.03 |        -0.39 |        -0.6  |
 
 ## Experiment legend
 
-| id                                                   | config (changes vs defaults)                                                                                            | note                                                                                                         |
-|:-----------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------|
-| B1 global median rpm x distance                      | baseline                                                                                                                |                                                                                                              |
-| B2 lane median rpm                                   | baseline                                                                                                                |                                                                                                              |
-| B3 ridge (log rpm)                                   | baseline                                                                                                                |                                                                                                              |
-| M0 LightGBM log-rpm                                  | {}                                                                                                                      |                                                                                                              |
-| A1 - quote_signal                                    | {'quote_signal': False}                                                                                                 |                                                                                                              |
-| A2 - holiday features                                | {'holidays': False}                                                                                                     |                                                                                                              |
-| A3 + linear time trend                               | {'trend': 'linear'}                                                                                                     | M0 + linear trend removed from the log target (slope from daily residuals, controlling for log market index) |
-| A4 target = rpm                                      | {'target': 'rpm'}                                                                                                       |                                                                                                              |
-| A5 target = rate ($)                                 | {'target': 'rate'}                                                                                                      |                                                                                                              |
-| A6 raw labels + Huber                                | {'clean_labels': False, 'objective': 'huber'}                                                                           |                                                                                                              |
-| A7 raw labels + L2                                   | {'clean_labels': False}                                                                                                 |                                                                                                              |
-| A8 + smearing                                        | {'smearing': True}                                                                                                      |                                                                                                              |
-| A9 no unseen-city blanking                           | {'unseen_rate': 0.0}                                                                                                    |                                                                                                              |
-| A10 - holidays - quote_signal                        | {'holidays': False, 'quote_signal': False}                                                                              |                                                                                                              |
-| A11 quote_signal as deviation from daily mean        | {'quote_signal': 'dev'}                                                                                                 |                                                                                                              |
-| A12 market: weekly cycle only (no slow level)        | {'market_features': 'cycle'}                                                                                            | drops market_index, mi_day, mi_7d, mi_28d; keeps mi_cycle (= day - 28d mean) and per-load deviation          |
-| A13 + linear trend (quarter-ramp controlled)         | {'trend': 'linear_q'}                                                                                                   | as A3, but the slope regression also controls for the quarter-end ramp                                       |
-| A16 cycle + qs dev                                   | {'market_features': 'cycle', 'quote_signal': 'dev'}                                                                     |                                                                                                              |
-| A18 cycle + qs dev + trend_q                         | {'market_features': 'cycle', 'quote_signal': 'dev', 'trend': 'linear_q'}                                                |                                                                                                              |
-| A20 cycle - quote_signal                             | {'market_features': 'cycle', 'quote_signal': False}                                                                     |                                                                                                              |
-| A21 cycle - holiday features                         | {'market_features': 'cycle', 'holidays': False}                                                                         |                                                                                                              |
-| A22 cycle + trend_q                                  | {'market_features': 'cycle', 'trend': 'linear_q'}                                                                       |                                                                                                              |
-| A23 cycle - holidays + smearing                      | {'market_features': 'cycle', 'holidays': False, 'smearing': True}                                                       |                                                                                                              |
-| A24 cycle - holidays + additive calendar             | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive'}                                                 | tree without date features + ridge stage 2 (weekday + quarter-end ramp) on out-of-fold residuals             |
-| A25 all market - holidays + additive calendar        | {'holidays': False, 'calendar': 'additive'}                                                                             |                                                                                                              |
-| A26 cycle - holidays + additive calendar with market | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'calendar_market': True}                        |                                                                                                              |
-| A27 A24 + qs_day (quote regime)                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_day'}                     | adds the daily mean quote_signal, which identifies the regime of the quote-price relation                    |
-| A28 A24 + recency half-life 30d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'half_life': 30}                                |                                                                                                              |
-| A29 A24 + recency half-life 60d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'half_life': 60}                                |                                                                                                              |
-| A30 A24 + recency half-life 90d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'half_life': 90}                                |                                                                                                              |
-| A31 A24 + level offset 28d                           | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'level_window': 28}                             | level offset = mean out-of-time residual of the last 28 training days                                        |
-| A32 A24 + level offset 56d                           | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'level_window': 56}                             |                                                                                                              |
-| A33 A27 + level offset 28d                           | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_day', 'level_window': 28} |                                                                                                              |
-| A34 A27 + recency half-life 60d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_day', 'half_life': 60}    | most accurate in CV, but the continuous daily quote mean acts as a date ID: erratic December curve           |
-| A35 A27 + recency half-life 90d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_day', 'half_life': 90}    |                                                                                                              |
-| A36 A27 + level offset 42d                           | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_day', 'level_window': 42} |                                                                                                              |
-| A37 A24 + qs_7d (smoothed quote regime)              | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_7d'}                      | trailing 7-day mean quote instead of the daily mean                                                          |
-| A38 A37 + recency half-life 60d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_7d', 'half_life': 60}     |                                                                                                              |
-| A39 A24 + coarse quote regime                        | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_regime'}                  | quote regime as 3 levels (7-day mean quote < 2.0 / 2.0-2.1 / > 2.1)                                          |
-| A40 A39 + recency half-life 60d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_regime', 'half_life': 60} | FINAL: lowest worst-fold MAE among models with a smooth December curve                                       |
-| T1 leaves=63, min_child=20                           | {'params': {'num_leaves': 63, 'min_child_samples': 20}}                                                                 |                                                                                                              |
-| T2 leaves=15, lr=0.05, 800 trees                     | {'params': {'num_leaves': 15, 'learning_rate': 0.05, 'n_estimators': 800}}                                              |                                                                                                              |
+| id                                                   | config (changes vs defaults)                                                                                             | note                                                                                                         |
+|:-----------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------|
+| B1 global median rpm x distance                      | baseline                                                                                                                 |                                                                                                              |
+| B2 lane median rpm                                   | baseline                                                                                                                 |                                                                                                              |
+| B3 ridge (log rpm)                                   | baseline                                                                                                                 |                                                                                                              |
+| M0 LightGBM log-rpm                                  | {}                                                                                                                       |                                                                                                              |
+| A1 - quote_signal                                    | {'quote_signal': False}                                                                                                  |                                                                                                              |
+| A2 - holiday features                                | {'holidays': False}                                                                                                      |                                                                                                              |
+| A3 + linear time trend                               | {'trend': 'linear'}                                                                                                      | M0 + linear trend removed from the log target (slope from daily residuals, controlling for log market index) |
+| A4 target = rpm                                      | {'target': 'rpm'}                                                                                                        |                                                                                                              |
+| A5 target = rate ($)                                 | {'target': 'rate'}                                                                                                       |                                                                                                              |
+| A6 raw labels + Huber                                | {'clean_labels': False, 'objective': 'huber'}                                                                            |                                                                                                              |
+| A7 raw labels + L2                                   | {'clean_labels': False}                                                                                                  |                                                                                                              |
+| A8 + smearing                                        | {'smearing': True}                                                                                                       |                                                                                                              |
+| A9 no unseen-city blanking                           | {'unseen_rate': 0.0}                                                                                                     |                                                                                                              |
+| A10 - holidays - quote_signal                        | {'holidays': False, 'quote_signal': False}                                                                               |                                                                                                              |
+| A11 quote_signal as deviation from daily mean        | {'quote_signal': 'dev'}                                                                                                  |                                                                                                              |
+| A12 market: weekly cycle only (no slow level)        | {'market_features': 'cycle'}                                                                                             | drops market_index, mi_day, mi_7d, mi_28d; keeps mi_cycle (= day - 28d mean) and per-load deviation          |
+| A13 + linear trend (quarter-ramp controlled)         | {'trend': 'linear_q'}                                                                                                    | as A3, but the slope regression also controls for the quarter-end ramp                                       |
+| A16 cycle + qs dev                                   | {'market_features': 'cycle', 'quote_signal': 'dev'}                                                                      |                                                                                                              |
+| A18 cycle + qs dev + trend_q                         | {'market_features': 'cycle', 'quote_signal': 'dev', 'trend': 'linear_q'}                                                 |                                                                                                              |
+| A20 cycle - quote_signal                             | {'market_features': 'cycle', 'quote_signal': False}                                                                      |                                                                                                              |
+| A21 cycle - holiday features                         | {'market_features': 'cycle', 'holidays': False}                                                                          |                                                                                                              |
+| A22 cycle + trend_q                                  | {'market_features': 'cycle', 'trend': 'linear_q'}                                                                        |                                                                                                              |
+| A23 cycle - holidays + smearing                      | {'market_features': 'cycle', 'holidays': False, 'smearing': True}                                                        |                                                                                                              |
+| A24 cycle - holidays + additive calendar             | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive'}                                                  | tree without date features + ridge stage 2 (weekday + quarter-end ramp) on out-of-fold residuals             |
+| A25 all market - holidays + additive calendar        | {'holidays': False, 'calendar': 'additive'}                                                                              |                                                                                                              |
+| A26 cycle - holidays + additive calendar with market | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'calendar_market': True}                         |                                                                                                              |
+| A27 A24 + qs_day (quote regime)                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_day'}                      | adds the daily mean quote_signal, which identifies the regime of the quote-price relation                    |
+| A28 A24 + recency half-life 30d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'half_life': 30}                                 |                                                                                                              |
+| A29 A24 + recency half-life 60d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'half_life': 60}                                 |                                                                                                              |
+| A30 A24 + recency half-life 90d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'half_life': 90}                                 |                                                                                                              |
+| A31 A24 + level offset 28d                           | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'level_window': 28}                              | level offset = mean out-of-time residual of the last 28 training days                                        |
+| A32 A24 + level offset 56d                           | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'level_window': 56}                              |                                                                                                              |
+| A33 A27 + level offset 28d                           | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_day', 'level_window': 28}  |                                                                                                              |
+| A34 A27 + recency half-life 60d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_day', 'half_life': 60}     | FINAL: lowest worst-fold and mean MAE; December curve jitters (daily quote mean around the regime boundary)  |
+| A35 A27 + recency half-life 90d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_day', 'half_life': 90}     |                                                                                                              |
+| A36 A27 + level offset 42d                           | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_day', 'level_window': 42}  |                                                                                                              |
+| A37 A24 + qs_7d (smoothed quote regime)              | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_7d'}                       | trailing 7-day mean quote instead of the daily mean                                                          |
+| A38 A37 + recency half-life 60d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_7d', 'half_life': 60}      |                                                                                                              |
+| A39 A24 + coarse quote regime                        | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_regime'}                   | quote regime as 3 levels (7-day mean quote < 2.0 / 2.0-2.1 / > 2.1)                                          |
+| A40 A39 + recency half-life 60d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_regime', 'half_life': 60}  | smoothest December curve, but +11% worst-fold / +21% mean MAE vs A34                                         |
+| A41 A24 + qs_14d (continuous)                        | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_14d'}                      |                                                                                                              |
+| A42 A24 + qs_7d + quote x regime                     | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'interact_7d'}                   | quote_signal x (trailing 7-day mean quote - c), c = training mean quote of the fold                          |
+| A43 A24 + qs_14d + quote x regime                    | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'interact_14d'}                  |                                                                                                              |
+| A44 A42 + recency half-life 60d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'interact_7d', 'half_life': 60}  |                                                                                                              |
+| A45 A43 + recency half-life 60d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'interact_14d', 'half_life': 60} |                                                                                                              |
+| A46 A41 + recency half-life 60d                      | {'market_features': 'cycle', 'holidays': False, 'calendar': 'additive', 'quote_signal': 'with_14d', 'half_life': 60}     |                                                                                                              |
+| T1 leaves=63, min_child=20                           | {'params': {'num_leaves': 63, 'min_child_samples': 20}}                                                                  |                                                                                                              |
+| T2 leaves=15, lr=0.05, 800 trees                     | {'params': {'num_leaves': 15, 'learning_rate': 0.05, 'n_estimators': 800}}                                               |                                                                                                              |
 
 ## Scheme: time (mean over folds)
 
@@ -109,6 +117,12 @@ Time folds: T1 Jan-Apr > May-Jun, T2 Jan-Jun > Jul-Aug, T3 Jan-Aug > Sep-Oct. Fi
 | A38 A37 + recency half-life 60d                      |         46.52 |          73.11 |             2.05 |      100.35 |       628.24 |           4.38 |
 | A39 A24 + coarse quote regime                        |         47.39 |          77.05 |             2.07 |      101.21 |       628.75 |           4.4  |
 | A40 A39 + recency half-life 60d                      |         48.77 |          78.06 |             2.12 |      102.56 |       628.43 |           4.46 |
+| A41 A24 + qs_14d (continuous)                        |         47.47 |          76.01 |             2.05 |      101.33 |       628.5  |           4.39 |
+| A42 A24 + qs_7d + quote x regime                     |         43.72 |          70.22 |             1.94 |       97.58 |       627.7  |           4.28 |
+| A43 A24 + qs_14d + quote x regime                    |         47.24 |          75.74 |             2.05 |      101.1  |       628.39 |           4.39 |
+| A44 A42 + recency half-life 60d                      |         45.12 |          70.78 |             2    |       98.95 |       627.58 |           4.34 |
+| A45 A43 + recency half-life 60d                      |         48.66 |          76.48 |             2.12 |      102.49 |       628.28 |           4.46 |
+| A46 A41 + recency half-life 60d                      |         49.59 |          78.28 |             2.14 |      103.41 |       628.6  |           4.48 |
 | T1 leaves=63, min_child=20                           |         73.12 |         113.69 |             3.22 |      126.59 |       634.79 |           5.5  |
 | T2 leaves=15, lr=0.05, 800 trees                     |         70.7  |         105.28 |             3.14 |      124.22 |       633.59 |           5.42 |
 
@@ -156,6 +170,12 @@ Per-fold MAE, clean labels (time):
 | A38 A37 + recency half-life 60d                      |                    37   |                    67   |                    35.6 |
 | A39 A24 + coarse quote regime                        |                    41.2 |                    73.7 |                    27.3 |
 | A40 A39 + recency half-life 60d                      |                    42.5 |                    71.4 |                    32.4 |
+| A41 A24 + qs_14d (continuous)                        |                    41.2 |                    70.8 |                    30.4 |
+| A42 A24 + qs_7d + quote x regime                     |                    32.8 |                    68.2 |                    30.2 |
+| A43 A24 + qs_14d + quote x regime                    |                    39.6 |                    71.3 |                    30.8 |
+| A44 A42 + recency half-life 60d                      |                    33.5 |                    66.5 |                    35.4 |
+| A45 A43 + recency half-life 60d                      |                    40.3 |                    70.1 |                    35.6 |
+| A46 A41 + recency half-life 60d                      |                    42   |                    71.1 |                    35.6 |
 | T1 leaves=63, min_child=20                           |                    65.6 |                    73.7 |                    80.1 |
 | T2 leaves=15, lr=0.05, 800 trees                     |                    62.4 |                    65   |                    84.7 |
 
@@ -203,6 +223,12 @@ Per-fold RMSE, raw labels (time):
 | A38 A37 + recency half-life 60d                      |                   630.6 |                   624.8 |                   629.4 |
 | A39 A24 + coarse quote regime                        |                   631.3 |                   627.7 |                   627.3 |
 | A40 A39 + recency half-life 60d                      |                   631.5 |                   626.8 |                   626.9 |
+| A41 A24 + qs_14d (continuous)                        |                   631.1 |                   625.9 |                   628.5 |
+| A42 A24 + qs_7d + quote x regime                     |                   629   |                   625.6 |                   628.5 |
+| A43 A24 + qs_14d + quote x regime                    |                   630.6 |                   626   |                   628.6 |
+| A44 A42 + recency half-life 60d                      |                   628.8 |                   624.7 |                   629.2 |
+| A45 A43 + recency half-life 60d                      |                   630.6 |                   625.4 |                   628.9 |
+| A46 A41 + recency half-life 60d                      |                   631.4 |                   625.6 |                   628.8 |
 | T1 leaves=63, min_child=20                           |                   634.6 |                   628.3 |                   641.4 |
 | T2 leaves=15, lr=0.05, 800 trees                     |                   633.7 |                   625.1 |                   641.9 |
 
@@ -250,6 +276,12 @@ Mean signed % error by test month (clean labels; negative = under-prediction):
 | A38 A37 + recency half-life 60d                      |      0.03 |     -1.6  |     -0.25 |     -2.03 |     -0.46 |     -0.63 |
 | A39 A24 + coarse quote regime                        |     -0.74 |     -1.74 |     -0.37 |     -2.29 |      0.34 |      0.19 |
 | A40 A39 + recency half-life 60d                      |     -0.78 |     -1.89 |     -0.36 |     -1.92 |      0.96 |      0.45 |
+| A41 A24 + qs_14d (continuous)                        |      0.08 |     -1.78 |     -0.24 |     -0.82 |     -0.15 |     -0.23 |
+| A42 A24 + qs_7d + quote x regime                     |      0.08 |     -0.96 |     -0.29 |     -2.18 |     -0.2  |     -0.46 |
+| A43 A24 + qs_14d + quote x regime                    |      0.06 |     -1.65 |     -0.26 |     -0.95 |     -0.17 |     -0.24 |
+| A44 A42 + recency half-life 60d                      |      0.02 |     -1.07 |     -0.28 |     -2.03 |     -0.39 |     -0.6  |
+| A45 A43 + recency half-life 60d                      |      0    |     -1.82 |     -0.2  |     -0.77 |     -0.09 |     -0.3  |
+| A46 A41 + recency half-life 60d                      |      0.01 |     -1.94 |     -0.18 |     -0.7  |     -0.1  |     -0.35 |
 | T1 leaves=63, min_child=20                           |     -0.14 |     -2.41 |     -0.56 |     -2.98 |     -2.12 |     -4.96 |
 | T2 leaves=15, lr=0.05, 800 trees                     |     -0.08 |     -2.12 |     -0.72 |     -3.14 |     -2.55 |     -5.12 |
 
@@ -279,6 +311,12 @@ Fold sizes:
 | A34 A27 + recency half-life 60d               |         31.3  |          46.89 |             1.37 |       81.81 |       591.4  |           3.74 |
 | A39 A24 + coarse quote regime                 |         33.23 |          52.47 |             1.43 |       83.69 |       592.11 |           3.79 |
 | A40 A39 + recency half-life 60d               |         38.4  |          58.14 |             1.67 |       88.8  |       592.29 |           4.04 |
+| A41 A24 + qs_14d (continuous)                 |         30.69 |          47.3  |             1.32 |       81.2  |       591.41 |           3.69 |
+| A42 A24 + qs_7d + quote x regime              |         28.43 |          43.1  |             1.24 |       78.97 |       591.2  |           3.61 |
+| A43 A24 + qs_14d + quote x regime             |         30.56 |          46.95 |             1.32 |       81.07 |       591.41 |           3.68 |
+| A44 A42 + recency half-life 60d               |         31.54 |          47.26 |             1.38 |       82.04 |       591.37 |           3.75 |
+| A45 A43 + recency half-life 60d               |         34.09 |          51.53 |             1.47 |       84.55 |       591.64 |           3.84 |
+| A46 A41 + recency half-life 60d               |         34.29 |          51.81 |             1.48 |       84.75 |       591.68 |           3.85 |
 
 Per-fold MAE, clean labels (city):
 
@@ -298,6 +336,12 @@ Per-fold MAE, clean labels (city):
 | A34 A27 + recency half-life 60d               |  28.1 |  36.5 |  32.3 |  29.9 |  30.4 |  30.6 |  33.7 |  28.9 |
 | A39 A24 + coarse quote regime                 |  29.8 |  39.7 |  33.8 |  32.3 |  32.2 |  31.6 |  35.9 |  30.5 |
 | A40 A39 + recency half-life 60d               |  34.5 |  45.5 |  39.5 |  37.2 |  37.6 |  37   |  41.1 |  34.9 |
+| A41 A24 + qs_14d (continuous)                 |  26.9 |  36.5 |  31.3 |  29.6 |  29.7 |  29.4 |  33.8 |  28.3 |
+| A42 A24 + qs_7d + quote x regime              |  25.2 |  33.3 |  28.9 |  27.4 |  27.4 |  27.4 |  31.3 |  26.5 |
+| A43 A24 + qs_14d + quote x regime             |  26.8 |  36.1 |  31.1 |  29.3 |  29.7 |  29.5 |  33.6 |  28.4 |
+| A44 A42 + recency half-life 60d               |  28.1 |  36.8 |  32.3 |  30.3 |  31   |  30.7 |  34.3 |  28.8 |
+| A45 A43 + recency half-life 60d               |  29.8 |  40.2 |  34.8 |  33.2 |  33.4 |  32.9 |  37.2 |  31.2 |
+| A46 A41 + recency half-life 60d               |  29.9 |  40.8 |  35.1 |  33.2 |  33.5 |  32.9 |  37.5 |  31.4 |
 
 Fold sizes:
 
@@ -326,6 +370,12 @@ Fold sizes:
 | A34 A27 + recency half-life 60d          |         28.63 |          43.35 |             1.23 |       78.9  |       588.25 |           3.62 |
 | A39 A24 + coarse quote regime            |         31.77 |          50.25 |             1.34 |       81.97 |       589.03 |           3.72 |
 | A40 A39 + recency half-life 60d          |         36.66 |          55.68 |             1.56 |       86.81 |       589.33 |           3.95 |
+| A41 A24 + qs_14d (continuous)            |         28.35 |          43.99 |             1.19 |       78.59 |       588.25 |           3.57 |
+| A42 A24 + qs_7d + quote x regime         |         26.26 |          40.21 |             1.11 |       76.54 |       588.05 |           3.5  |
+| A43 A24 + qs_14d + quote x regime        |         28.29 |          43.73 |             1.19 |       78.54 |       588.27 |           3.57 |
+| A44 A42 + recency half-life 60d          |         28.84 |          43.72 |             1.24 |       79.09 |       588.18 |           3.62 |
+| A45 A43 + recency half-life 60d          |         31.31 |          47.76 |             1.33 |       81.51 |       588.38 |           3.71 |
+| A46 A41 + recency half-life 60d          |         31.44 |          47.96 |             1.33 |       81.64 |       588.43 |           3.72 |
 
 Per-fold MAE, clean labels (random):
 
@@ -341,6 +391,12 @@ Per-fold MAE, clean labels (random):
 | A34 A27 + recency half-life 60d          |  28.5 |  28.7 |  28.8 |  28.6 |  28.5 |
 | A39 A24 + coarse quote regime            |  31.9 |  31.8 |  31.3 |  31.7 |  32.2 |
 | A40 A39 + recency half-life 60d          |  36.7 |  36.9 |  36.2 |  36.4 |  37.1 |
+| A41 A24 + qs_14d (continuous)            |  28.5 |  28.1 |  27.9 |  28.6 |  28.6 |
+| A42 A24 + qs_7d + quote x regime         |  26.4 |  26.2 |  25.8 |  26.1 |  26.7 |
+| A43 A24 + qs_14d + quote x regime        |  28.6 |  27.9 |  28   |  28.5 |  28.5 |
+| A44 A42 + recency half-life 60d          |  29   |  28.6 |  28.5 |  28.6 |  29.4 |
+| A45 A43 + recency half-life 60d          |  31.4 |  31.1 |  31.2 |  31.5 |  31.4 |
+| A46 A41 + recency half-life 60d          |  31.5 |  31.2 |  31.2 |  31.6 |  31.6 |
 
 Fold sizes:
 

@@ -6,7 +6,7 @@ Run after the time-fold CV: python -m src.ensemble
 import numpy as np
 import pandas as pd
 
-from .config import ARTIFACTS, REPORTS
+from .config import ARTIFACTS, METRICS, REPORTS
 
 RIDGE = "B3 ridge (log rpm)"
 GRID = np.round(np.arange(0, 1.0001, 0.05), 2)
@@ -38,6 +38,8 @@ def main(tree="A34 A27 + recency half-life 60d"):
     best, t = blend_table(tree)
     md = [f"# Ensemble check: {tree} + ridge", "", f"Weight on the tree tuned on T1-T2: {best:.2f}", "",
           t.to_markdown(index=False), ""]
+    METRICS.mkdir(parents=True, exist_ok=True)
+    t.assign(tuned_weight=best).to_csv(METRICS / "ensemble_check.csv", index=False)
     (REPORTS / "ensemble_check.md").write_text("\n".join(md), encoding="utf-8")
     print("\n".join(md))
 

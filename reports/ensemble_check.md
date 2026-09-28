@@ -1,10 +1,10 @@
-# Ensemble check: A40 A39 + recency half-life 60d + ridge
+# Ensemble check: A34 A27 + recency half-life 60d + ridge
 
-Weight on the tree tuned on T1-T2: 0.40
+Weight on the tree tuned on T1-T2: 0.60
 
 | model                           |   T1: Jan-Apr > May-Jun |   T2: Jan-Jun > Jul-Aug |   T3: Jan-Aug > Sep-Oct |   mean |   worst |
 |:--------------------------------|------------------------:|------------------------:|------------------------:|-------:|--------:|
-| A40 A39 + recency half-life 60d |                    42.5 |                    71.4 |                    32.4 |   48.8 |    71.4 |
+| A34 A27 + recency half-life 60d |                    30.2 |                    64.1 |                    26.8 |   40.4 |    64.1 |
 | B3 ridge (log rpm)              |                    52.6 |                    52.3 |                   110.7 |   71.8 |   110.7 |
-| blend w=0.40 (tuned on T1-T2)   |                    43.8 |                    46.7 |                    61.5 |   50.7 |    61.5 |
-| blend w=0.50                    |                    42.5 |                    48.7 |                    50.4 |   47.2 |    50.4 |
+| blend w=0.60 (tuned on T1-T2)   |                    35.1 |                    50.7 |                    44.5 |   43.4 |    50.7 |
+| blend w=0.50                    |                    37.4 |                    48.9 |                    54.5 |   47   |    54.5 |

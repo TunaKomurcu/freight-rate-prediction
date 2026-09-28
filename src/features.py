@@ -42,7 +42,8 @@ def daily_market(*frames):
     out = pd.DataFrame({"mi_day": daily, "mi_7d": daily.rolling(7, min_periods=1).mean(),
                         "mi_28d": daily.rolling(28, min_periods=1).mean(), "qs_day": qs,
                         # trailing 7-day mean: the quote regime lasts weeks, the daily mean is noisy
-                        "qs_7d": qs.rolling(7, min_periods=1).mean()})
+                        "qs_7d": qs.rolling(7, min_periods=1).mean(),
+                        "qs_14d": qs.rolling(14, min_periods=1).mean()})
     # Coarse quote regime (0 low / 1 mid / 2 high) from the trailing 7-day mean. Coarse on purpose:
     # a continuous daily value is unique per date and lets the tree memorise day-level prices.
     out["qs_regime"] = np.digitize(out.qs_7d, QS_REGIME_CUTS)
@@ -113,6 +114,7 @@ def base_features(df, market):
         # negatively / not at all to price (see EDA); known on the day like market_index
         "qs_day": m.qs_day.to_numpy(),
         "qs_7d": m.qs_7d.to_numpy(),
+        "qs_14d": m.qs_14d.to_numpy(),
         "qs_regime": m.qs_regime.to_numpy(),
     })
     X["mi_dev"] = X.market_index - X.mi_day  # per-load deviation from the day's market

@@ -15,7 +15,7 @@ from sklearn.model_selection import KFold
 
 from .baselines import GlobalRPM, LaneMedian, RidgeLogRPM
 from .clean import WeightImputer, find_corrupted_rates, fix_features
-from .config import ARTIFACTS, INK2, REPORTS, SEED, SERIES
+from .config import ARTIFACTS, INK2, METRICS, REPORTS, SEED, SERIES
 from .data import load_raw
 from .features import DIST_BANDS, daily_market
 from .model import RateModel
@@ -30,7 +30,7 @@ N_CITY_GROUPS = 8  # 64 cities -> groups of 8, like the 8 unseen cities in valid
 BASELINES = {"B1 global median rpm x distance": GlobalRPM, "B2 lane median rpm": LaneMedian,
              "B3 ridge (log rpm)": RidgeLogRPM}
 MAIN = "M0 LightGBM log-rpm"
-FINAL = "A40 A39 + recency half-life 60d"  # == model.FINAL_CONFIG
+FINAL = "A34 A27 + recency half-life 60d"  # == model.FINAL_CONFIG
 EXPERIMENTS = {
     MAIN: {},
     "A1 - quote_signal": {"quote_signal": False},
@@ -70,6 +70,12 @@ EXPERIMENTS = {
     "A38 A37 + recency half-life 60d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "with_7d", "half_life": 60},
     "A39 A24 + coarse quote regime": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "with_regime"},
     "A40 A39 + recency half-life 60d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "with_regime", "half_life": 60},
+    "A41 A24 + qs_14d (continuous)": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "with_14d"},
+    "A42 A24 + qs_7d + quote x regime": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "interact_7d"},
+    "A43 A24 + qs_14d + quote x regime": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "interact_14d"},
+    "A44 A42 + recency half-life 60d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "interact_7d", "half_life": 60},
+    "A45 A43 + recency half-life 60d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "interact_14d", "half_life": 60},
+    "A46 A41 + recency half-life 60d": {"market_features": "cycle", "holidays": False, "calendar": "additive", "quote_signal": "with_14d", "half_life": 60},
     "T1 leaves=63, min_child=20": {"params": {"num_leaves": 63, "min_child_samples": 20}},
     "T2 leaves=15, lr=0.05, 800 trees": {"params": {"num_leaves": 15, "learning_rate": 0.05, "n_estimators": 800}},
 }
@@ -78,10 +84,12 @@ SCHEME_EXPERIMENTS = {
     "city": [MAIN, "A1 - quote_signal", "A2 - holiday features", "A9 no unseen-city blanking",
              "A12 market: weekly cycle only (no slow level)", "A21 cycle - holiday features",
              "A24 cycle - holidays + additive calendar", "A27 A24 + qs_day (quote regime)",
-             "A34 A27 + recency half-life 60d", "A39 A24 + coarse quote regime", "A40 A39 + recency half-life 60d"],
+             "A34 A27 + recency half-life 60d", "A39 A24 + coarse quote regime", "A40 A39 + recency half-life 60d",
+             "A37 A24 + qs_7d (smoothed quote regime)", "A41 A24 + qs_14d (continuous)", "A42 A24 + qs_7d + quote x regime", "A43 A24 + qs_14d + quote x regime", "A44 A42 + recency half-life 60d", "A45 A43 + recency half-life 60d", "A46 A41 + recency half-life 60d"],
     "random": [MAIN, "A21 cycle - holiday features", "A24 cycle - holidays + additive calendar",
                "A27 A24 + qs_day (quote regime)", "A34 A27 + recency half-life 60d",
-               "A39 A24 + coarse quote regime", "A40 A39 + recency half-life 60d"],
+               "A39 A24 + coarse quote regime", "A40 A39 + recency half-life 60d",
+               "A37 A24 + qs_7d (smoothed quote regime)", "A41 A24 + qs_14d (continuous)", "A42 A24 + qs_7d + quote x regime", "A43 A24 + qs_14d + quote x regime", "A44 A42 + recency half-life 60d", "A45 A43 + recency half-life 60d", "A46 A41 + recency half-life 60d"],
 }
 
 
@@ -162,7 +170,8 @@ def fmt(mean_clean, mean_raw, order):
 
 KEY_MODELS = list(BASELINES) + [MAIN, "A21 cycle - holiday features", "A24 cycle - holidays + additive calendar",
                                  "A27 A24 + qs_day (quote regime)", "A34 A27 + recency half-life 60d",
-                                 "A39 A24 + coarse quote regime", "A40 A39 + recency half-life 60d"]
+                                 "A39 A24 + coarse quote regime", "A40 A39 + recency half-life 60d",
+                                 "A42 A24 + qs_7d + quote x regime", "A44 A42 + recency half-life 60d"]
 NOTES = {
     "A3 + linear time trend": "M0 + linear trend removed from the log target (slope from daily residuals, controlling for log market index)",
     "A13 + linear trend (quarter-ramp controlled)": "as A3, but the slope regression also controls for the quarter-end ramp",
@@ -170,10 +179,11 @@ NOTES = {
     "A24 cycle - holidays + additive calendar": "tree without date features + ridge stage 2 (weekday + quarter-end ramp) on out-of-fold residuals",
     "A27 A24 + qs_day (quote regime)": "adds the daily mean quote_signal, which identifies the regime of the quote-price relation",
     "A31 A24 + level offset 28d": "level offset = mean out-of-time residual of the last 28 training days",
-    "A34 A27 + recency half-life 60d": "most accurate in CV, but the continuous daily quote mean acts as a date ID: erratic December curve",
+    "A34 A27 + recency half-life 60d": "FINAL: lowest worst-fold and mean MAE; December curve jitters (daily quote mean around the regime boundary)",
+    "A42 A24 + qs_7d + quote x regime": "quote_signal x (trailing 7-day mean quote - c), c = training mean quote of the fold",
     "A37 A24 + qs_7d (smoothed quote regime)": "trailing 7-day mean quote instead of the daily mean",
     "A39 A24 + coarse quote regime": "quote regime as 3 levels (7-day mean quote < 2.0 / 2.0-2.1 / > 2.1)",
-    "A40 A39 + recency half-life 60d": "FINAL: lowest worst-fold MAE among models with a smooth December curve",
+    "A40 A39 + recency half-life 60d": "smoothest December curve, but +11% worst-fold / +21% mean MAE vs A34",
 }
 
 
@@ -192,18 +202,27 @@ def summary_table():
                 r["time mean"], r["time worst"] = per_fold.loc[m].mean(), per_fold.loc[m].max()
                 g = c[c.model == m]
                 r["time MAPE %"] = 100 * (g.ae / g.y).mean()
+                raw = df[df.model == m]
+                r["time MAE raw"] = (raw.pred - raw.y).abs().groupby(raw.fold).mean().mean()
+                r["time RMSE clean"] = np.sqrt(((g.pred - g.y) ** 2).groupby(g.fold).mean()).mean()
+                r["time RMSE raw"] = np.sqrt(((raw.pred - raw.y) ** 2).groupby(raw.fold).mean()).mean()
                 r.update({f"bias {k} %": v for k, v in g.groupby(g.date.dt.strftime("%b")).pe.mean().items()})
             else:
                 r[f"{scheme} MAE"] = per_fold.loc[m].mean()
     t = pd.DataFrame(rows).T.reindex(KEY_MODELS)
     bias_cols = [f"bias {m} %" for m in ("May", "Jun", "Jul", "Aug", "Sep", "Oct")]
-    return t[["T1", "T2", "T3", "time mean", "time worst", "time MAPE %", "city MAE", "random MAE"] + bias_cols].round(2)
+    cols = ["T1", "T2", "T3", "time mean", "time worst", "time MAPE %", "time RMSE clean", "time MAE raw",
+            "time RMSE raw", "city MAE", "random MAE"]
+    return t[cols + bias_cols].round(2)
 
 
 def report():
     from .plotting import plt, save, setup
     setup()
     order = list(BASELINES) + list(EXPERIMENTS)
+    METRICS.mkdir(parents=True, exist_ok=True)
+    key = summary_table()
+    key.to_csv(METRICS / "key_models.csv")
     legend = pd.DataFrame([{"id": n, "config (changes vs defaults)": str(EXPERIMENTS.get(n, "baseline")),
                             "note": NOTES.get(n, "")} for n in order])
     md = ["# Validation results", "",
@@ -212,7 +231,7 @@ def report():
           "Time folds: T1 Jan-Apr > May-Jun, T2 Jan-Jun > Jul-Aug, T3 Jan-Aug > Sep-Oct. "
           "Final model: " + FINAL, "",
           "## Key models (MAE $, clean labels; bias = mean signed % error, negative = under-prediction)", "",
-          summary_table().to_markdown(), "",
+          key.to_markdown(), "",
           "## Experiment legend", "", legend.to_markdown(index=False), ""]
     per_fold_all = {}
     for scheme in ("time", "city", "random"):
@@ -245,6 +264,7 @@ def report():
     parts = []
     for col in ("equipment", "distance band", "month"):
         b = t.groupby(col).apply(metrics, include_groups=False).round(2)
+        b.to_csv(METRICS / f"breakdown_{col.replace(' ', '_')}.csv")
         parts += [f"### By {col}", "", b.to_markdown(), ""]
     (REPORTS / "validation_breakdown.md").write_text(f"# Final model ({FINAL}), time folds, clean labels\n\n" + "\n".join(parts), encoding="utf-8")
     print("\n".join(parts))
