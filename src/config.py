@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
 REPORTS = ROOT / "reports"
 FIGURES = REPORTS / "figures"
+METRICS = REPORTS / "metrics"  # small CSVs the DOCX report is built from (committed)
 ARTIFACTS = ROOT / "artifacts"
 
 TRAIN_CSV = DATA / "train_test.csv"

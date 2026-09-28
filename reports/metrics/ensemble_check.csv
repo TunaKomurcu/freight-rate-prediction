@@ -1,0 +1,5 @@
+model,T1: Jan-Apr > May-Jun,T2: Jan-Jun > Jul-Aug,T3: Jan-Aug > Sep-Oct,mean,worst,tuned_weight
+A34 A27 + recency half-life 60d,30.2,64.1,26.8,40.4,64.1,0.6
+B3 ridge (log rpm),52.6,52.3,110.7,71.8,110.7,0.6
+blend w=0.60 (tuned on T1-T2),35.1,50.7,44.5,43.4,50.7,0.6
+blend w=0.50,37.4,48.9,54.5,47.0,54.5,0.6

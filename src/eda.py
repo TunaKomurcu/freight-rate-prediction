@@ -189,6 +189,32 @@ def figures(train, valid, rel):
     save(fig, "09_coverage.png")
 
 
+def quote_regime_figure(train, valid, rel):
+    """Key finding: the quote_signal-price relation flips sign by regime, which is why the pooled
+    correlation is ~0. Regime = weekly mean quote (known at prediction time)."""
+    ok = (rel > 0.6) & (rel < 1.7) & (train.distance > 800)
+    t = train[ok].assign(lr=np.log(rel[ok]))
+    week = t.date.dt.to_period("W")
+    wk = t.groupby(week).apply(lambda g: g.quote_signal.corr(g.lr), include_groups=False).rename("corr").to_frame()
+    qs_all = pd.concat([train, valid]).groupby("date").quote_signal.mean()
+    wq = qs_all.groupby(qs_all.index.to_period("W")).mean()
+    wk["qs"] = wq.reindex(wk.index)
+    fig, ax = plt.subplots(1, 2, figsize=(11, 3.6))
+    ax[0].plot(wq.index.to_timestamp(), wq.values, color=SERIES[0], marker="o", ms=3)
+    for y in (2.0, 2.1):
+        ax[0].axhline(y, color=INK2, lw=1, ls="--")
+    ax[0].axvline(pd.Timestamp("2025-11-01"), color=SERIES[1], lw=1.5)
+    ax[0].text(pd.Timestamp("2025-11-05"), wq.max(), "validation", color=SERIES[1], fontsize=8, va="top")
+    ax[0].set(title="Weekly mean quote_signal: three regimes", ylabel="mean quote_signal")
+    ax[0].tick_params(axis="x", rotation=30)
+    ax[1].scatter(wk.qs, wk["corr"], color=SERIES[0], s=22)
+    ax[1].axhline(0, color=INK2, lw=1)
+    ax[1].set(title=f"Quote-price correlation by week (r = {wk.qs.corr(wk['corr']):.2f})",
+              xlabel="weekly mean quote_signal", ylabel="corr(quote, lane-relative rate)\nloads > 800 mi")
+    save(fig, "12_quote_regime.png")
+    return wk
+
+
 def main():
     train, valid = load_raw()
     text, rel = audit(train, valid)
@@ -196,6 +222,12 @@ def main():
     text += (f"\n### December chart inputs\n- Columns: {list(dec.columns)}; dates {dec.date.min()}..{dec.date.max()}; "
              f"no lat/lon, market_index or quote_signal\n")
     figures(train, valid, rel)
+    wk = quote_regime_figure(train, valid, rel)
+    text += ("\n### quote_signal regimes (key finding)\n"
+             f"- Weekly corr(quote_signal, lane-relative rate) on loads > 800 mi ranges {wk['corr'].min():.2f}..{wk['corr'].max():.2f}; "
+             f"it tracks the weekly mean quote (r = {wk.qs.corr(wk['corr']):.2f}): positive when the mean quote is high "
+             "(> 2.1: late Feb, Mar, Jun, Sep), negative when low (< 2.0: Apr, May, Jul, Oct), ~0 in between (Aug). "
+             "Pooled over all weeks these cancel out, which is why the raw correlation looked ~0.\n")
     REPORTS.mkdir(exist_ok=True)
     (REPORTS / "eda_summary.md").write_text("# EDA and data-quality summary (raw data)\n\n" + text + "\n", encoding="utf-8")
     print(text)

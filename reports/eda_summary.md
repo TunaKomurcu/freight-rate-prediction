@@ -41,3 +41,6 @@
 ### December chart inputs
 - Columns: ['pickup', 'delivery', 'distance', 'equipment', 'weight', 'date', 'predicted_rate']; dates 2025-12-01..2025-12-31; no lat/lon, market_index or quote_signal
 
+### quote_signal regimes (key finding)
+- Weekly corr(quote_signal, lane-relative rate) on loads > 800 mi ranges -0.32..0.49; it tracks the weekly mean quote (r = 0.87): positive when the mean quote is high (> 2.1: late Feb, Mar, Jun, Sep), negative when low (< 2.0: Apr, May, Jul, Oct), ~0 in between (Aug). Pooled over all weeks these cancel out, which is why the raw correlation looked ~0.
+

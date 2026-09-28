@@ -1,0 +1,4 @@
+December market_index source,MAE vs real daily index
+Real daily mean from validation.csv (chosen),0.0
+Forecast: October weekday profile,0.02001116352996932
+Forecast: October flat mean,0.0656957578537861

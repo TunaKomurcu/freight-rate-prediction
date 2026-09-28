@@ -1,0 +1,8 @@
+rule,action,train_rows,valid_rows
+R1 city/equipment spelling,strip + title-case (defensive),0,0
+R2 negative weight,absolute value (sign flip),292,145
+R3 weight at cap/floor,"keep value, add flag column",1236,308
+R4 missing weight,"impute lane x equipment median (>=5 loads) else equipment median, fitted on training rows; flag",300,165
+R5 missing market_index,same-date mean of the feature; flag,374,249
+R6 clipped coordinates (kept),keep; distance is authoritative,2052,669
+R7 corrupted posted_rate,drop from training (rate/expected outside 0.6-1.7),677,0

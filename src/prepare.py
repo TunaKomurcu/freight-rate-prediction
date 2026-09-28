@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .clean import OUTLIER_HIGH, OUTLIER_LOW, WeightImputer, find_corrupted_rates, fix_features
-from .config import REPORTS
+from .config import METRICS, REPORTS
 from .data import lane_relative_rate, load_raw
 
 
@@ -46,7 +46,10 @@ def main():
     }
     log = pd.DataFrame([{"rule": r, "action": a, "train_rows": c_t[r], "valid_rows": c_v[r]} for r, a in sorted(actions.items())])
     log.loc[len(log)] = ["R7 corrupted posted_rate", f"drop from training (rate/expected outside {OUTLIER_LOW}-{OUTLIER_HIGH})", int(bad.sum()), 0]
+    METRICS.mkdir(parents=True, exist_ok=True)
+    log.to_csv(METRICS / "cleaning_log.csv", index=False)
     options, actual = december_market_options(train_raw, valid_raw)
+    options.to_csv(METRICS / "december_market_options.csv", index=False)
     lines = [
         "# Cleaning log", "", log.to_markdown(index=False), "",
         "## Corrupted-label detector (R7)", "",
